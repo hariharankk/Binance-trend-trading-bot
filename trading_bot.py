@@ -48,7 +48,7 @@ def stablecoins(z):
 
 
 # delete stablecoins
-def delete_multiple_element(list_object, indices):
+def delete_multiple_elements(list_object, indices):
     indices = sorted(indices, reverse=True)
     for idx in indices:
         if idx < len(list_object):
@@ -64,7 +64,7 @@ def ranking(crypto, q):
 
 
 # moving average
-def ma(df, w):
+def ma(df, w):  # not meaningful name
     ma = df.rolling(window=w).mean()
     return ma
 
@@ -77,16 +77,16 @@ def crossover(d, d1):
     return d4
 
 
-def absdata(stablecoins, delete_multiple_element, ranking):
+def absdata(stablecoins, delete_multiple_elements, ranking):
     cmc = coinmarketcapapi.CoinMarketCapAPI(
         '12a455ad-70af-4051-8092-c6ac065c74b8')
-    d = cmc.cryptocurrency_listings_latest()
+    d = cmc.cryptocurrency_listings_latest() # not meaningful name
     crypto = list(map(lambda coin: coin['symbol'], d.data))
     tags = list(map(lambda coin: coin['tags'], d.data))
     index = stablecoins(tags)
-    delete_multiple_element(crypto, index)
+    delete_multiple_elements(crypto, index)
     q = list(map(lambda coin: coin['quote'], d.data))
-    delete_multiple_element(q, index)
+    delete_multiple_elements(q, index)
     Crypto = ranking(crypto[:10], q[:10])
     Crypto = list(map(lambda x: x + 'USDT', Crypto))
     return Crypto
@@ -111,8 +111,13 @@ def quantity():
         else:
             return 0
 
+"""
+very important, binance needs corect step size as.
+For example BTC supports a step size of 6 decimal points while XRP only supports 
+one. So if we want to buy XRP, we need to make sure that the volume formatting is 
+correct. Trying to buy 1.000 XRP would fail, while 1.0 would be executed.
+"""
 
-#very important, binance needs corect step size as For example BTC supports a step size of 6 decimal points while XRP only supports one. So if we want to buy XRP, we need to make sure that the volume formatting is correct. Trying to buy 1.000 XRP would fail, while 1.0 would be executed.
 def convert_volume(coin):
     '''Converts the volume given in QUANTITY from USDT to the each coin's volume'''
     last_price = get_price(coin)
@@ -179,11 +184,9 @@ def update_porfolio(orders, trades):
 
 
 # generate buy signal
-
-
 def buy(Crypto, y, t):
 
-    for Crypto in Crypto:
+    for Crypto in Crypto: # not meaningful
         # data puller
         orders = {}
         trades = {}
@@ -240,13 +243,14 @@ def buy(Crypto, y, t):
 
     update_porfolio(orders, trades)
 
-
+# not so good comments/documentation
 #sell block
 
-# we need only 21 day prior data to calculate our indicators
+"""
+we need only 21 day prior data to calculate our indicators
+we check this block only if we have trades
+"""
 
-
-# we check this block only if we have trades
 def sell(coins_bought):
     stoploss = 0
     buy = {}
@@ -317,7 +321,7 @@ if __name__ == '__main__':
     t = (date.today() - timedelta(days=1)).strftime('%d %b, %Y')
     y = (date.today() - timedelta(days=100)).strftime('%d %b, %Y')
 
-    Crypto = absdata(stablecoins, delete_multiple_element, ranking)
+    Crypto = absdata(stablecoins, delete_multiple_elements, ranking)
     # get trading universe w.r.t top 10coins by marketca[p] now
     coins_bought, coins_bought_file_path = json1()
     p1 = Thread(target=buy, args=(
