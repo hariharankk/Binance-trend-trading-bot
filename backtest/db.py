@@ -1,22 +1,13 @@
 import numpy as np
-import requests
 import pandas as pd
 from cryptocmd import CmcScraper
 import matplotlib.pyplot as plt
-from bs4 import BeautifulSoup
 import datetime
 from datetime import date, timedelta
-import time 
-import requests
 import sqlalchemy as db
 import pymysql
+import multiprocess as mp
 
-def dup_utility(ab):
-    Crypto = []
-    for i in ab:
-        if i not in Crypto:
-            Crypto.append(i)    
-    return Crypto
 
  
 def sql_connector():
@@ -53,45 +44,77 @@ def sql_to_dataframe():
 
     return(frame)
 
-def scrapper_crypto():
-    a=2013; d=4; c=28; url='https://coinmarketcap.com/historical/' ; b={}; a1=pd.DataFrame();
-    d= datetime.datetime(a,d,c)
-    d1=d.strftime('%Y%m%d')
-    url=url+d1+'/'
-    
-    for i in  range(434):
-        Crypto=[]
-        while True: 
-            p=requests.get(url)
-            if p.status_code == 200:
-                break
-        soup = BeautifulSoup(p.content,'html.parser')
-        z2=soup.find_all('td', class_="cmc-table__cell cmc-table__cell--sortable cmc-table__cell--left cmc-table__cell--sort-by__symbol")
-        for z in z2:
-            Crypto.append(z.div.text)
-        crypto=dup_utility(Crypto)
-        url='https://coinmarketcap.com/historical/'
-        b[d]=crypto
-        d=d+timedelta(7)
-        d1=d.strftime('%Y%m%d')
-        url=url+d1+'/'
-        
+end=434
+start=0
+
+def scrapper_crypto(b):
+    a1=pd.DataFrame();    
     # remove empty string in dict    
-    b={k: v for k, v in b.items() if v}        
-    for i in list(b.keys()):
-        ab=pd.DataFrame()
-        ab['c']=b[i]
-        ab['key']=i
-        a1 = a1.append(ab, ignore_index = True)
+    for i in range(0,434):
+        b[i]={k: v for k, v in b[i].items() if v}        
+    for j in range(0,434):
+        for i in list(b[j].keys()):
+            ab=pd.DataFrame()
+            ab['c']=b[j][i][0]
+            ab['d']=b[j][i][1]
+            ab['key']=i
+            a1 = a1.append(ab, ignore_index = True)
+    a1['d']=a1['d'].str[3:]
+    a1['key']=a1.key.str.extract('(\d+)')
+    a1['key']=pd.to_datetime(a1['key'])    
     a1 = a1.sort_values(by='key')
     az= a1.groupby('c').max()
     az=az.reset_index()
-    az.rename(columns={'c':'Crypto','key':'max'},inplace=True)
+    az.rename(columns={'c':'Crypto','key':'max','d':'name'},inplace=True)
     azz= a1.groupby('c').min()
     azz=azz.reset_index()
-    azz.rename(columns={'c':'crypto','key':'min'},inplace=True)
+    azz.rename(columns={'c':'crypto','key':'min','d':'Name'},inplace=True)
     az=pd.concat([az,azz],axis=1,join='inner')
     del(az['crypto'])
+    del(az['name'])
     tableName   = "crypto"
     dataframe_to_sql(az,tableName,sql_connector)
 
+def scrapee(url):
+    def dup_utility(ab):
+        Crypto = []
+        for i in ab:
+            if i not in Crypto:
+                Crypto.append(i)    
+        return Crypto
+
+    import time
+    b={}
+    Crypto=[];Crypto1=[];
+    time.sleep(10)
+    print(url)
+    import requests
+    p=requests.get(url)
+    from bs4 import BeautifulSoup
+    soup = BeautifulSoup(p.content,'html.parser')
+    z2=soup.find_all('td', class_="cmc-table__cell cmc-table__cell--sortable cmc-table__cell--left cmc-table__cell--sort-by__symbol")
+    z1=soup.find_all('td', class_="cmc-table__cell cmc-table__cell--sticky cmc-table__cell--sortable cmc-table__cell--left cmc-table__cell--sort-by__name")
+    for z in z2:
+        Crypto.append(z.div.text)
+    for z in z1:
+        Crypto1.append(z.div.text)    
+    crypto=dup_utility(Crypto)
+    crypto1=dup_utility(Crypto1)
+    b[url]=[crypto,crypto1]
+    return b    
+
+def generate_urls():
+    all_urls=[]
+    a=2013; d=4; c=21; base_url='https://coinmarketcap.com/historical/' ; 
+    d= datetime.datetime(a,d,c)
+    for i in range(0,434):
+        d=d+timedelta(7)
+        d1=d.strftime('%Y%m%d')
+        url=base_url+d1+'/'        
+        all_urls.append(url)
+    return all_urls     
+
+all_urls=generate_urls()    
+
+with mp.Pool(1) as pool:
+    a=pool.map(scrapee, all_urls)
