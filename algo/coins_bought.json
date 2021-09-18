@@ -1,0 +1,41 @@
+"ADAUSDT": {
+        "symbol": "ADAUSDT",
+        "orderid": 2329172410,
+        "timestamp": 1628935424643,
+        "bought_at": "2.48600000",
+        "volume": 326.90000000000003,
+        "count": 2
+    },
+    "BANDUSDT": {
+        "symbol": "BANDUSDT",
+        "orderid": 701281705,
+        "timestamp": 1624683125908,
+        "bought_at": "5.14800000",
+        "volume": 2.334,
+        "count": 1
+    },
+    "DOTUSDT": {
+        "symbol": "DOTUSDT",
+        "orderid": 1916530533,
+        "timestamp": 1631538690887,
+        "bought_at": "34.30000000",
+        "volume": 1.28,
+        "count": 1
+    },
+    "TRXUSDT": {
+        "symbol": "TRXUSDT",
+        "orderid": 1288594210,
+        "timestamp": 1631773159817,
+        "bought_at": "0.11698000",
+        "volume": 196.7,
+        "count": 1
+    },
+    "AVAXUSDT": {
+        "symbol": "AVAXUSDT",
+        "orderid": 622134720,
+        "timestamp": 1631850724153,
+        "bought_at": "69.13000000",
+        "volume": 1.5499999999999998,
+        "count": 2
+    }
+}
