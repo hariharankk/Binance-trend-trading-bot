@@ -1,0 +1,4 @@
+prod:
+  access_key: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+  secret_key: 'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx'
+  crypto_key: 'xxxxxxxxxxxxxxxxxxxxxxxxxxx'
