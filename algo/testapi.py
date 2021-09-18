@@ -1,9 +1,27 @@
+import time
+def server_status(client):
+        systemT=int(time.time()*1000)           #timestamp when requested was launch
+        serverT= client.get_server_time()  #timestamp when server replied
+        lag=int(serverT['serverTime']-systemT)
+
+        print('System timestamp: %d' % systemT)
+        print('Server timestamp: %d' % serverT['serverTime'])
+        print('Lag: %d' % lag)
+
+        if lag>1000:
+            msg='\nNot good. Excessive lag (lag > 1000ms), the lag is'+ str(lag)
+        elif lag<0:
+            msg='\nNot good. System time ahead server time (lag < 0ms), the lag is'+ str(lag)
+        else:  
+            msg='\nGood (0ms > lag > 1000ms), the lag is'+ str(lag)              
+        return msg
+    
 def test_api_key(client, BinanceAPIException):
     """Checks to see if API keys supplied returns errors
     Args:
         client (class): binance client class
         BinanceAPIException (clas): binance exeptions class
-    Returns:
+    Return
         bool | msg: true/false depending on success, and message
     """
     try:
@@ -35,4 +53,3 @@ def test_api_key(client, BinanceAPIException):
     
     except Exception as e:
         return False, f"Fallback exception occured:\n{e}"
-
