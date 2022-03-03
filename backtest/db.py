@@ -1,120 +1,92 @@
-import numpy as np
 import pandas as pd
+import numpy as np
+import requests
 from cryptocmd import CmcScraper
-import matplotlib.pyplot as plt
-import datetime
-from datetime import date, timedelta
-import sqlalchemy as db
-import pymysql
-import multiprocess as mp
+from datetime import timedelta
+import pymongo
+import json
 
 
- 
-def sql_connector():
-    sqlEngine       = db.create_engine('mysql+mysqlconnector://{0}:{1}@{2}/{3}'.
-                                               format('root', 'asshole1099','127.0.0.1', 'crypto'), pool_recycle=3600)
-    dbConnection    = sqlEngine.connect()
+class scraper(object):
+    def __init__(self):
+      self.collection = self.mongo()
+      self.no_data = pd.DataFrame()
+      self.missing_data = pd.DataFrame()
+      self.Crypto = self.get_coinmarketcap_data()#pd.DataFrame()
+      
 
-    return dbConnection
+    def get_coinmarketcap_data(self):
+      query = self.collection.find_one({"index":"First_Name"},{"data":1,"_id":0})
+      coins=pd.DataFrame(json.loads(query['data']),columns = json.loads(query['data']).keys())
+      coins=coins.reset_index()
+      return coins
 
-
-
-def dataframe_to_sql(df,tableName,sql_connector):
-    dbConnection=sql_connector()     
-
-    try:
-        df.to_sql(tableName, dbConnection, if_exists='replace',index_label='id');
     
-    except Exception as ex:   
-        print(ex)
-    
-    else:
-        print("Table %s created successfully."%tableName);   
+    def mongo(self):
+      # uri (uniform resource identifier) defines the connection parameters 
+      uri = 'mongodb+srv://crypto:asshole1099@cluster0.vjecl.mongodb.net/myFirstDatabase?retryWrites=true&w=majority'
+      # start client to connect to MongoDB server 
+      client = pymongo.MongoClient( uri )
+      collection = client.Crypto.coins 
+      return collection
 
-    finally:
-        dbConnection.close()
+
+    def cmc_scraper(self,crypto):
+      scraper = CmcScraper(crypto)
+      df_1d = scraper.get_dataframe()
+      df_1d=df_1d.sort_values(by='Date')
+      return df_1d 
+
+    def utlity_format(self):    
+        self.Crypto['max']=pd.to_datetime(self.Crypto['max'],format='%Y-%m-%d %H:%M:%S')
+        self.Crypto['min']=pd.to_datetime(self.Crypto['min'],format='%Y-%m-%d %H:%M:%S')       
+        return self.Crypto
+
+    def difference(self,df_1d):
+        df_1d['diff']=(df_1d['Date'].diff())
+        df_1d['diff']=pd.to_numeric(df_1d['diff'].dt.days, downcast='float')
+        return df_1d
+
+    def json_to_df(self,df):
+      df = df.to_json()
+      return df
 
 
-def sql_to_dataframe():
-    dbConnection=sql_connector()     
-    
-    frame  = pd.read_sql("select * from crypto", dbConnection);
+    def getdata(self):
+        self.Crypto = self.get_coinmarketcap_data()
+        self.utlity_format()
+        self.Crypto['Crypto'] = self.Crypto['Crypto'].replace(['STRAT'],'STRAX')
+        self.Crypto['Crypto'] = self.Crypto['Crypto'].replace(['NANO'],'XNO')
+        self.Crypto['Crypto'] = self.Crypto['Crypto'].replace(['GNT'],'GLM')
+        self.Crypto[self.Crypto.Crypto!='MEXC']
 
-    pd.set_option('display.expand_frame_repr', False)
+        
 
-    return(frame)
-
-end=434
-start=0
-
-def scrapper_crypto(b):
-    a1=pd.DataFrame();    
-    # remove empty string in dict    
-    for i in range(0,434):
-        b[i]={k: v for k, v in b[i].items() if v}        
-    for j in range(0,434):
-        for i in list(b[j].keys()):
-            ab=pd.DataFrame()
-            ab['c']=b[j][i][0]
-            ab['d']=b[j][i][1]
-            ab['key']=i
-            a1 = a1.append(ab, ignore_index = True)
-    a1['d']=a1['d'].str[3:]
-    a1['key']=a1.key.str.extract('(\d+)')
-    a1['key']=pd.to_datetime(a1['key'])    
-    a1 = a1.sort_values(by='key')
-    az= a1.groupby('c').max()
-    az=az.reset_index()
-    az.rename(columns={'c':'Crypto','key':'max','d':'name'},inplace=True)
-    azz= a1.groupby('c').min()
-    azz=azz.reset_index()
-    azz.rename(columns={'c':'crypto','key':'min','d':'Name'},inplace=True)
-    az=pd.concat([az,azz],axis=1,join='inner')
-    del(az['crypto'])
-    del(az['name'])
-    tableName   = "crypto"
-    dataframe_to_sql(az,tableName,sql_connector)
-
-def scrapee(url):
-    def dup_utility(ab):
-        Crypto = []
-        for i in ab:
-            if i not in Crypto:
-                Crypto.append(i)    
-        return Crypto
-
-    import time
-    b={}
-    Crypto=[];Crypto1=[];
-    time.sleep(10)
-    print(url)
-    import requests
-    p=requests.get(url)
-    from bs4 import BeautifulSoup
-    soup = BeautifulSoup(p.content,'html.parser')
-    z2=soup.find_all('td', class_="cmc-table__cell cmc-table__cell--sortable cmc-table__cell--left cmc-table__cell--sort-by__symbol")
-    z1=soup.find_all('td', class_="cmc-table__cell cmc-table__cell--sticky cmc-table__cell--sortable cmc-table__cell--left cmc-table__cell--sort-by__name")
-    for z in z2:
-        Crypto.append(z.div.text)
-    for z in z1:
-        Crypto1.append(z.div.text)    
-    crypto=dup_utility(Crypto)
-    crypto1=dup_utility(Crypto1)
-    b[url]=[crypto,crypto1]
-    return b    
-
-def generate_urls():
-    all_urls=[]
-    a=2013; d=4; c=21; base_url='https://coinmarketcap.com/historical/' ; 
-    d= datetime.datetime(a,d,c)
-    for i in range(0,434):
-        d=d+timedelta(7)
-        d1=d.strftime('%Y%m%d')
-        url=base_url+d1+'/'        
-        all_urls.append(url)
-    return all_urls     
-
-all_urls=generate_urls()    
-
-with mp.Pool(1) as pool:
-    a=pool.map(scrapee, all_urls)
+        for i in range(len(self.Crypto)-1,-1,-1):    
+            try:
+                
+                df_1d = self.cmc_scraper(self.Crypto['Crypto'].iloc[i])
+                df_1d=self.difference(df_1d)
+                if df_1d['Date'].iloc[-1] >= self.Crypto['max'].iloc[i] and df_1d['Date'].iloc[0] <= self.Crypto['min'].iloc[i] and (df_1d['diff'].iloc[1:].sum() - (len(df_1d)-1)) <= 2 and len(df_1d) > 110 :
+                    del df_1d['diff']
+                    df_1d=self.json_to_df(df_1d)
+                    self.collection.insert_one({"index":self.Crypto['Crypto'].iloc[i],"data":df_1d})
+                else:
+                    if df_1d['diff'].iloc[1:].sum() > (len(df_1d)-1) and df_1d['Date'].iloc[-1] >= self.Crypto['max'].iloc[i] and df_1d['Date'].iloc[0] <= self.Crypto['min'].iloc[i] and len(df_1d) > 110:
+                        del df_1d['diff']
+                        df=df_1d.loc[(df_1d['Date'] >= self.Crypto['min'].iloc[i])&(df_1d['Date'] <= self.Crypto['max'].iloc[i])]
+                        df=self.difference(df)
+                        if df['diff'].iloc[1:].sum() <= (len(df)-1):
+                          df_1d=df_1d=self.json_to_df(df_1d)
+                          self.collection.insert_one({"index":self.Crypto['Crypto'].iloc[i],"data":df_1d})
+                        else:
+                          self.missing_data=self.missing_data.append(self.Crypto.iloc[i],ignore_index=True)
+                          self.Crypto=self.Crypto.drop(self.Crypto['id'].iloc[i])
+                    else:
+                      self.no_data=self.no_data.append(self.Crypto.iloc[i],ignore_index=True)
+                      self.Crypto=self.Crypto.drop(self.Crypto['id'].iloc[i])
+            except ConnectionError as e:
+                print(e)
+        json_Crypto=self.Crypto.to_json()
+        self.collection.insert_one({"index":"Name" , "data":json_Crypto})        
+        return self.collection
